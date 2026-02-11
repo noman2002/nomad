@@ -115,7 +115,9 @@ class VibeStep extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             '${selected.length}/5 selected',
-            style: const TextStyle(color: Colors.white70),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),

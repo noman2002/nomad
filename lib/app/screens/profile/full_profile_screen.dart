@@ -69,7 +69,9 @@ class _FullProfileScreenState extends State<FullProfileScreen> {
           const SizedBox(height: 4),
           Text(
             '${p.currentLocationLabel} → ${p.nextDestinationLabel}',
-            style: const TextStyle(color: Colors.white70),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 12),
           Text(p.bio),

@@ -60,9 +60,11 @@ class _InviteCodeStepState extends State<InviteCodeStep> {
             ),
           ),
           const SizedBox(height: 12),
-          const Text(
+          Text(
             'Invite codes are mocked in this prototype.',
-            style: TextStyle(color: Colors.white70),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),

@@ -135,12 +135,21 @@ class _CategoryChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 6),
-      child: ChoiceChip(
+      child: FilterChip(
         selected: selected,
         onSelected: (_) => onTap(),
         label: Text(label),
+        selectedColor: theme.colorScheme.primaryContainer,
+        checkmarkColor: theme.colorScheme.primary,
+        labelStyle: TextStyle(
+          color: selected
+              ? theme.colorScheme.primary
+              : theme.colorScheme.onSurface,
+          fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+        ),
       ),
     );
   }
@@ -165,14 +174,17 @@ class _ActionRail extends StatelessWidget {
         ),
         Text(
           '${stories.commentCount(story.id)}',
-          style: const TextStyle(fontSize: 12, color: Colors.white70),
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            fontSize: 12,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
         const SizedBox(height: 2),
         IconButton(
           onPressed: () {
             showModalBottomSheet<void>(
               context: context,
-              backgroundColor: const Color(0xFF111114),
+              backgroundColor: Theme.of(context).colorScheme.surface,
               isScrollControlled: true,
               shape: const RoundedRectangleBorder(
                 borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -187,7 +199,7 @@ class _ActionRail extends StatelessWidget {
           onPressed: () {
             showModalBottomSheet<String>(
               context: context,
-              backgroundColor: const Color(0xFF111114),
+              backgroundColor: Theme.of(context).colorScheme.surface,
               isScrollControlled: true,
               shape: const RoundedRectangleBorder(
                 borderRadius: BorderRadius.vertical(top: Radius.circular(20)),

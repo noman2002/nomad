@@ -41,9 +41,12 @@ class _QuestsTabState extends State<QuestsTab> {
             children: [
               _ScoreCard(progress: progress),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Active Quests',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
               ),
               const SizedBox(height: 10),
               for (final q in quests.activeQuests) ...[
@@ -51,9 +54,12 @@ class _QuestsTabState extends State<QuestsTab> {
                 const SizedBox(height: 10),
               ],
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'Daily Challenge',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
               ),
               const SizedBox(height: 10),
               _QuestTile(quests.daily, trailing: FilledButton.tonal(
@@ -61,9 +67,12 @@ class _QuestsTabState extends State<QuestsTab> {
                 child: Text(quests.daily.completed ? 'Done' : 'Complete'),
               )),
               const SizedBox(height: 16),
-              const Text(
+              Text(
                 'Leaderboard (mock)',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
               ),
               const SizedBox(height: 10),
               const _Leaderboard(),
@@ -90,30 +99,48 @@ class _ScoreCard extends StatelessWidget {
       AdventureLevel.legend => 'Legend',
     };
 
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Text(
+              Text(
                 'Adventure Score',
-                style: TextStyle(fontWeight: FontWeight.w900),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: theme.colorScheme.onSurface,
+                ),
               ),
               const Spacer(),
-              Text(levelLabel, style: const TextStyle(color: Colors.white70)),
+              Text(
+                levelLabel,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 10),
           Text(
             '${progress.score}',
-            style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900),
+            style: theme.textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.w900,
+              color: theme.colorScheme.primary,
+            ),
           ),
           const SizedBox(height: 10),
           ClipRRect(
@@ -134,12 +161,19 @@ class _QuestTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF111114),
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -149,12 +183,17 @@ class _QuestTile extends StatelessWidget {
               children: [
                 Text(
                   quest.title,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                    color: theme.colorScheme.onSurface,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   '${quest.progress}/${quest.goal} • +${quest.points} pts',
-                  style: const TextStyle(color: Colors.white70),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -163,7 +202,7 @@ class _QuestTile extends StatelessWidget {
             const SizedBox(width: 10),
             trailing!,
           ] else if (quest.completed) ...[
-            const Icon(Icons.check_circle, color: Colors.greenAccent),
+            Icon(Icons.check_circle, color: theme.colorScheme.primary),
           ],
         ],
       ),
@@ -176,12 +215,19 @@ class _Leaderboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFF111114),
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: const Column(
         children: [
@@ -205,12 +251,31 @@ class _LeaderRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Row(
       children: [
-        Text('#$rank', style: const TextStyle(fontWeight: FontWeight.w900)),
+        Text(
+          '#$rank',
+          style: theme.textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: theme.colorScheme.primary,
+          ),
+        ),
         const SizedBox(width: 12),
-        Expanded(child: Text(name)),
-        Text('$score', style: const TextStyle(color: Colors.white70)),
+        Expanded(
+          child: Text(
+            name,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurface,
+            ),
+          ),
+        ),
+        Text(
+          '$score',
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
       ],
     );
   }

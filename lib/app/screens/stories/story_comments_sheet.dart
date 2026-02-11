@@ -43,7 +43,7 @@ class _StoryCommentsSheetState extends State<StoryCommentsSheet> {
                 width: 44,
                 height: 5,
                 decoration: BoxDecoration(
-                  color: Colors.white24,
+                  color: Theme.of(context).colorScheme.outline,
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),
@@ -57,11 +57,13 @@ class _StoryCommentsSheetState extends State<StoryCommentsSheet> {
             ),
             const SizedBox(height: 12),
             if (comments.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
                 child: Text(
                   'Be the first to comment.',
-                  style: TextStyle(color: Colors.white70),
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               )
             else
@@ -78,10 +80,13 @@ class _StoryCommentsSheetState extends State<StoryCommentsSheet> {
                       children: [
                         CircleAvatar(
                           radius: 14,
-                          backgroundColor: Colors.white.withValues(alpha: 0.10),
+                          backgroundColor: Theme.of(context).colorScheme.primaryContainer,
                           child: Text(
                             c.author.name.characters.first,
-                            style: const TextStyle(fontSize: 12),
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -91,10 +96,18 @@ class _StoryCommentsSheetState extends State<StoryCommentsSheet> {
                             children: [
                               Text(
                                 c.author.name,
-                                style: const TextStyle(fontWeight: FontWeight.w800),
+                                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                ),
                               ),
                               const SizedBox(height: 2),
-                              Text(c.text),
+                              Text(
+                                c.text,
+                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                ),
+                              ),
                             ],
                           ),
                         ),

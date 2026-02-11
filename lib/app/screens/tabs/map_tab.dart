@@ -112,7 +112,7 @@ class _MapTabState extends State<MapTab> {
       height: 40,
       alignment: Alignment.center,
       child: _PulsingDot(
-        color: Colors.lightBlueAccent,
+        color: AppColors.primary,
         size: 14,
       ),
     );
@@ -175,14 +175,18 @@ class _MapTabState extends State<MapTab> {
               width: 30,
               height: 30,
               decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.55),
+                color: AppColors.primary,
                 shape: BoxShape.circle,
                 border: Border.all(color: Colors.white, width: 2),
               ),
               alignment: Alignment.center,
               child: Text(
                 '${bucketLocations.length}',
-                style: const TextStyle(fontWeight: FontWeight.w900),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  fontSize: 12,
+                ),
               ),
             ),
           ),
@@ -230,7 +234,7 @@ class _MapTabState extends State<MapTab> {
           onTap: () {
             showModalBottomSheet<void>(
               context: context,
-              backgroundColor: const Color(0xFF111114),
+              backgroundColor: Theme.of(context).colorScheme.surface,
               isScrollControlled: true,
               shape: const RoundedRectangleBorder(
                 borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -244,7 +248,7 @@ class _MapTabState extends State<MapTab> {
             decoration: BoxDecoration(
               color: color,
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2),
+              border: Border.all(color: AppColors.surface, width: 2),
             ),
           ),
         ),
@@ -272,12 +276,19 @@ class _FilterBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.45),
+        color: theme.colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -308,7 +319,7 @@ class _FilterBar extends StatelessWidget {
           DropdownButton<double>(
             value: radiusKm,
             underline: const SizedBox.shrink(),
-            dropdownColor: const Color(0xFF111114),
+            dropdownColor: theme.colorScheme.surface,
             items: const [
               DropdownMenuItem(value: 10, child: Text('10 km')),
               DropdownMenuItem(value: 25, child: Text('25 km')),
@@ -345,20 +356,26 @@ class _FilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-        decoration: BoxDecoration(
-          color: selected
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: selected
               ? Theme.of(context).colorScheme.primary
-              : Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: Colors.white12),
-        ),
+              : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.outline,
+            ),
+          ),
         child: Text(
           label,
           style: TextStyle(
             fontWeight: FontWeight.w800,
-            color: selected ? Colors.black : Colors.white,
+            color: selected
+              ? Theme.of(context).colorScheme.onPrimary
+              : Theme.of(context).colorScheme.onSurface,
             fontSize: 12,
           ),
         ),

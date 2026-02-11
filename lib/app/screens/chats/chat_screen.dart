@@ -47,9 +47,12 @@ class _ChatScreenState extends State<ChatScreen> {
             Text(other.name),
             const SizedBox(width: 10),
             if (conv.isMoving)
-              const Text(
+              Text(
                 'On the road',
-                style: TextStyle(color: Colors.white70, fontSize: 12),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 12,
+                ),
               ),
           ],
         ),
@@ -84,14 +87,20 @@ class _ChatScreenState extends State<ChatScreen> {
                     decoration: BoxDecoration(
                       color: mine
                           ? Theme.of(context).colorScheme.primary
-                          : Colors.white.withValues(alpha: 0.08),
+                          : Theme.of(context).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.white12),
+                      border: mine
+                          ? null
+                          : Border.all(
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
                     ),
                     child: Text(
                       m.text,
                       style: TextStyle(
-                        color: mine ? Colors.black : Colors.white,
+                        color: mine
+                            ? Theme.of(context).colorScheme.onPrimary
+                            : Theme.of(context).colorScheme.onSurface,
                         fontWeight: m.kind == MessageKind.coffeePing
                             ? FontWeight.w800
                             : FontWeight.w500,
@@ -112,7 +121,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     onPressed: () async {
                       final result = await showModalBottomSheet<ShareLocationResult>(
                         context: context,
-                        backgroundColor: const Color(0xFF111114),
+                        backgroundColor: Theme.of(context).colorScheme.surface,
                         isScrollControlled: true,
                         shape: const RoundedRectangleBorder(
                           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
@@ -134,7 +143,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     onPressed: () async {
                       final result = await showModalBottomSheet<ShareRouteResult>(
                         context: context,
-                        backgroundColor: const Color(0xFF111114),
+                        backgroundColor: Theme.of(context).colorScheme.surface,
                         isScrollControlled: true,
                         shape: const RoundedRectangleBorder(
                           borderRadius: BorderRadius.vertical(top: Radius.circular(20)),

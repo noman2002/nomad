@@ -32,7 +32,7 @@ class StoryDetailSheet extends StatelessWidget {
               width: 44,
               height: 5,
               decoration: BoxDecoration(
-                color: Colors.white24,
+                color: Theme.of(context).colorScheme.outline,
                 borderRadius: BorderRadius.circular(999),
               ),
             ),
@@ -40,10 +40,19 @@ class StoryDetailSheet extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             story.author.name,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
           ),
           const SizedBox(height: 8),
-          Text(story.caption, style: const TextStyle(color: Colors.white70)),
+          Text(
+            story.caption,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -57,7 +66,7 @@ class StoryDetailSheet extends StatelessWidget {
                 onPressed: () {
                   showModalBottomSheet<void>(
                     context: context,
-                    backgroundColor: const Color(0xFF111114),
+                    backgroundColor: Theme.of(context).colorScheme.surface,
                     isScrollControlled: true,
                     shape: const RoundedRectangleBorder(
                       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),

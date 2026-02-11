@@ -49,7 +49,9 @@ class _ShareLocationSheetState extends State<ShareLocationSheet> {
             const SizedBox(height: 10),
             Text(
               'Current (mock): ${pos.latitude.toStringAsFixed(4)}, ${pos.longitude.toStringAsFixed(4)}',
-              style: const TextStyle(color: Colors.white70),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: 12),
             TextField(

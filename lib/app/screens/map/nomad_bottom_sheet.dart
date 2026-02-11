@@ -57,7 +57,7 @@ class _NomadBottomSheetState extends State<NomadBottomSheet> {
               width: 44,
               height: 5,
               decoration: BoxDecoration(
-                color: Colors.white24,
+                color: Theme.of(context).colorScheme.outline,
                 borderRadius: BorderRadius.circular(999),
               ),
             ),
@@ -84,7 +84,9 @@ class _NomadBottomSheetState extends State<NomadBottomSheet> {
           const SizedBox(height: 6),
           Text(
             widget.nomad.activities.take(3).join(' • '),
-            style: const TextStyle(color: Colors.white70),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 14),
           Row(
