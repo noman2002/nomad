@@ -13,6 +13,13 @@ class ProfileTab extends StatelessWidget {
     final theme = Theme.of(context);
     final user = session.currentUser;
 
+    if (user == null || session.isLoading) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Profile')),
+        body: const Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: const Text('Profile')),
       body: SingleChildScrollView(
@@ -36,7 +43,7 @@ class ProfileTab extends StatelessWidget {
                     ),
                     alignment: Alignment.center,
                     child: Text(
-                      user.name.characters.first.toUpperCase(),
+                      user.name.isNotEmpty ? user.name.characters.first.toUpperCase() : 'U',
                       style: theme.textTheme.headlineMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                         color: theme.colorScheme.primary,
@@ -110,7 +117,7 @@ class ProfileTab extends StatelessWidget {
                     color: theme.colorScheme.outline,
                   ),
                   _StatItem(
-                    value: '${user.age ~/ 3 + 5}',
+                    value: '${(user.age > 0 ? user.age ~/ 3 : 0) + 5}',
                     label: 'Countries',
                     theme: theme,
                   ),
@@ -129,7 +136,7 @@ class ProfileTab extends StatelessWidget {
             _TripCard(
               theme: theme,
               title: 'Next adventure',
-              subtitle: '${user.activities.take(2).join(' • ')}',
+              subtitle: user.activities.take(2).join(' • '),
             ),
             const SizedBox(height: 24),
             SizedBox(
@@ -147,13 +154,38 @@ class ProfileTab extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            Center(
-              child: Text(
-                'Signed in (prototype)',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+            OutlinedButton(
+              onPressed: () async {
+                // Show confirmation dialog
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    title: const Text('Sign Out'),
+                    content: const Text('Are you sure you want to sign out?'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        child: const Text('Cancel'),
+                      ),
+                      FilledButton(
+                        onPressed: () => Navigator.pop(context, true),
+                        child: const Text('Sign Out'),
+                      ),
+                    ],
+                  ),
+                );
+                
+                if (confirmed == true) {
+                  await session.signOut();
+                }
+              },
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
+              child: const Text('Sign Out'),
             ),
           ],
         ),

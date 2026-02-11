@@ -3,9 +3,11 @@ import 'package:flutter_map/flutter_map.dart';
 import 'package:provider/provider.dart';
 
 import '../../app_theme.dart';
-import '../../mock/mock_data.dart';
+import '../../firebase/firestore/locations_service.dart';
+import '../../firebase/firestore/profile_service.dart';
 import '../../models/geo.dart';
 import '../../models/nomad_location.dart';
+import '../../models/nomad_profile.dart';
 import '../../models/nomad_user.dart';
 import '../../state/session_state.dart';
 import '../../util/geo_distance.dart';
@@ -26,83 +28,128 @@ class _MapTabState extends State<MapTab> {
   double _zoom = 13;
   bool _clusterEnabled = true;
 
+  // Cache for user profiles
+  final Map<String, NomadProfile> _profileCache = {};
+
   @override
   Widget build(BuildContext context) {
     final session = context.watch<SessionState>();
+    final currentUser = session.currentUser;
 
-    final locations = _filteredLocations();
-    final markers = _buildMarkers(context, locations);
+    // Default position (Los Angeles)
+    final myPosition = const LatLng(34.0522, -118.2437);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Nomad'),
         actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: Row(
-              children: [
-                Text(
-                  '${session.currentUser.adventureScore}',
-                  style: const TextStyle(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(width: 6),
-                const Icon(Icons.local_fire_department, color: AppColors.accent),
-              ],
+          if (currentUser != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: Row(
+                children: [
+                  Text(
+                    '${currentUser.adventureScore}',
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(width: 6),
+                  const Icon(Icons.local_fire_department, color: AppColors.accent),
+                ],
+              ),
             ),
-          ),
         ],
       ),
-      body: Stack(
-        children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: MockData.myPosition,
-              initialZoom: 13,
-              onPositionChanged: (pos, _) {
-                final z = pos.zoom;
-                if ((_zoom - z).abs() < 0.001) return;
-                setState(() => _zoom = z);
-              },
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.nomad',
+      body: StreamBuilder<List<NomadLocation>>(
+        stream: LocationsService.watchLocations(limit: 100),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text('Error: ${snapshot.error}'),
+                ],
               ),
-              MarkerLayer(markers: markers),
+            );
+          }
+
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final allLocations = snapshot.data!;
+          
+          // Load profiles for visible users
+          _loadProfiles(allLocations);
+
+          final locations = _filteredLocations(allLocations, myPosition);
+          final markers = _buildMarkers(context, locations, myPosition);
+
+          return Stack(
+            children: [
+              FlutterMap(
+                mapController: _mapController,
+                options: MapOptions(
+                  initialCenter: myPosition,
+                  initialZoom: 13,
+                  onPositionChanged: (pos, _) {
+                    final z = pos.zoom;
+                    if ((_zoom - z).abs() < 0.001) return;
+                    setState(() => _zoom = z);
+                  },
+                ),
+                children: [
+                  TileLayer(
+                    urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    userAgentPackageName: 'com.example.nomad',
+                  ),
+                  MarkerLayer(markers: markers),
+                ],
+              ),
+              Positioned(
+                left: 12,
+                right: 12,
+                top: 12,
+                child: _FilterBar(
+                  filter: _filter,
+                  radiusKm: _radiusKm,
+                  clusterEnabled: _clusterEnabled,
+                  onFilterChanged: (v) => setState(() => _filter = v),
+                  onRadiusChanged: (v) => setState(() => _radiusKm = v),
+                  onToggleCluster: () => setState(() => _clusterEnabled = !_clusterEnabled),
+                ),
+              ),
+              Positioned(
+                right: 16,
+                bottom: 16,
+                child: FloatingActionButton.extended(
+                  onPressed: () {
+                    _mapController.move(myPosition, 13.5);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Showing ${locations.length} nearby nomads')),
+                    );
+                  },
+                  label: const Text('Discover Nearby'),
+                  icon: const Icon(Icons.radar),
+                ),
+              ),
             ],
-          ),
-          Positioned(
-            left: 12,
-            right: 12,
-            top: 12,
-            child: _FilterBar(
-              filter: _filter,
-              radiusKm: _radiusKm,
-              clusterEnabled: _clusterEnabled,
-              onFilterChanged: (v) => setState(() => _filter = v),
-              onRadiusChanged: (v) => setState(() => _radiusKm = v),
-              onToggleCluster: () => setState(() => _clusterEnabled = !_clusterEnabled),
-            ),
-          ),
-          Positioned(
-            right: 16,
-            bottom: 16,
-            child: FloatingActionButton.extended(
-              onPressed: () {
-                _mapController.move(MockData.myPosition, 13.5);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Showing ${locations.length} nearby nomads')),
-                );
-              },
-              label: const Text('Discover Nearby'),
-              icon: const Icon(Icons.radar),
-            ),
-          ),
-        ],
+          );
+        },
       ),
     );
+  }
+
+  Future<void> _loadProfiles(List<NomadLocation> locations) async {
+    final userIds = locations.map((l) => l.userId).where((id) => !_profileCache.containsKey(id)).toList();
+    if (userIds.isEmpty) return;
+
+    final profiles = await ProfileService.getProfiles(userIds);
+    setState(() {
+      _profileCache.addAll(profiles);
+    });
   }
 
   Marker _buildMyMarker(LatLng position) {
@@ -118,12 +165,12 @@ class _MapTabState extends State<MapTab> {
     );
   }
 
-  List<NomadLocation> _filteredLocations() {
-    final center = MockData.myPosition;
+  List<NomadLocation> _filteredLocations(List<NomadLocation> allLocations, LatLng center) {
+    return allLocations.where((loc) {
+      final profile = _profileCache[loc.userId];
+      if (profile == null) return false;
 
-    return MockData.nearbyLocations.where((loc) {
-      final user = MockData.nearbyNomads.firstWhere((u) => u.id == loc.userId);
-      if (_filter != null && user.lookingFor != _filter) return false;
+      if (_filter != null && profile.user.lookingFor != _filter) return false;
 
       final km = GeoDistance.kmBetween(center, loc.position);
       if (km > _radiusKm) return false;
@@ -132,8 +179,8 @@ class _MapTabState extends State<MapTab> {
     }).toList();
   }
 
-  List<Marker> _buildMarkers(BuildContext context, List<NomadLocation> locations) {
-    final markers = <Marker>[_buildMyMarker(MockData.myPosition)];
+  List<Marker> _buildMarkers(BuildContext context, List<NomadLocation> locations, LatLng myPosition) {
+    final markers = <Marker>[_buildMyMarker(myPosition)];
 
     final shouldCluster = _clusterEnabled && _zoom < 13.2;
     if (!shouldCluster) {
@@ -218,7 +265,10 @@ class _MapTabState extends State<MapTab> {
     List<NomadLocation> locations,
   ) {
     return locations.map((loc) {
-      final user = MockData.nearbyNomads.firstWhere((u) => u.id == loc.userId);
+      final profile = _profileCache[loc.userId];
+      if (profile == null) return null;
+
+      final user = profile.user;
       final color = switch (user.lookingFor) {
         LookingFor.dating => Colors.redAccent,
         LookingFor.friends => Colors.greenAccent,
@@ -253,7 +303,7 @@ class _MapTabState extends State<MapTab> {
           ),
         ),
       );
-    }).toList();
+    }).whereType<Marker>().toList();
   }
 }
 

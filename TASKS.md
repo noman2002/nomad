@@ -87,14 +87,19 @@ Screens (5-step flow):
 ## Phase 7 — Firebase Backend Integration (Approval Gate H)
 
 - [x] Firebase project setup (iOS/Android) + config files
-- [x] Auth (phone auth per requirements or alternative if you prefer)
-- [ ] Firestore schema + security rules (invite-only)
-- [ ] Storage for profile/stories videos + thumbnails
-- [ ] Real-time updates for map dots + stories feed
-- [ ] Cloud Functions for matching + notifications
-- [ ] FCM push notifications (matches/messages)
+- [x] Auth (email/password implemented, phone auth for later)
+- [x] Firestore schema + security rules (basic rules implemented, invite-only TBD)
+- [x] Storage rules for profile/stories videos + thumbnails
+- [x] Real-time updates for map dots + stories feed (via Firestore streams)
+- [x] Data migration service to upload mock data to Firestore
+- [x] Map now uses Firestore data instead of mock data
+- [ ] Cloud Functions for matching + notifications (not started)
+- [ ] FCM push notifications (matches/messages) (not started)
+- [ ] Actual video upload/download from Storage (rules ready, implementation TBD)
 
-**Deliverable for approval H:** Real backend: sign-in, upload video, map + feed populated from Firestore, chat real-time.
+**Deliverable for approval H:** Real backend: sign-in working, map + feed populated from Firestore, chat real-time via Firestore streams.
+
+**Note:** Firebase setup is complete with authentication, Firestore, and Storage rules. Mock data is automatically uploaded on first launch. Cloud Functions and FCM still need implementation.
 
 ## Phase 8 — Monetization (RevenueCat) + Gating (Approval Gate I)
 

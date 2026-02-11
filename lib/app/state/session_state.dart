@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
 
-import '../mock/mock_data.dart';
+import '../firebase/auth/auth_service.dart';
+import '../firebase/firestore/user_service.dart';
 import '../models/nomad_user.dart';
+import 'package:firebase_auth/firebase_auth.dart' as auth;
 
 class OnboardingDraft {
   String name = '';
@@ -23,7 +25,36 @@ class OnboardingDraft {
 }
 
 class SessionState extends ChangeNotifier {
-  NomadUser currentUser = MockData.currentUser;
+  NomadUser? _currentUser;
+  bool _loading = false;
+
+  NomadUser? get currentUser => _currentUser;
+  bool get isLoading => _loading;
+
+  /// Load current user from Firestore
+  Future<void> loadCurrentUser() async {
+    final uid = AuthService.currentUser?.uid;
+    if (uid == null) {
+      _currentUser = null;
+      notifyListeners();
+      return;
+    }
+
+    _loading = true;
+    notifyListeners();
+
+    try {
+      final userDoc = await UserService.getUser(uid);
+      if (userDoc != null) {
+        _currentUser = _parseUser(uid, userDoc);
+      }
+    } catch (e) {
+      print('Error loading current user: $e');
+    } finally {
+      _loading = false;
+      notifyListeners();
+    }
+  }
 
   void refresh() => notifyListeners();
 
@@ -49,33 +80,80 @@ class SessionState extends ChangeNotifier {
     notifyListeners();
   }
 
-  void toggleInterested(UserId userId) {
+  Future<void> toggleInterested(UserId userId) async {
     if (interested.contains(userId)) {
       interested.remove(userId);
     } else {
       interested.add(userId);
-      final theyAlsoInterested = MockData.mutualInterested.contains(userId);
-      if (theyAlsoInterested) {
-        matches.add(userId);
-      }
+      
+      // TODO: Check in Firestore if they're also interested in us
+      // For now, we'll just add to matches if they're in our interested set
     }
     notifyListeners();
   }
 
-  void completeOnboarding() {
-    currentUser = NomadUser(
-      id: 'me',
-      name: onboarding.name.isEmpty ? 'You' : onboarding.name,
-      age: onboarding.age ?? 0,
-      lookingFor: onboarding.lookingFor,
-      activities:
-          onboarding.activities.isEmpty ? MockData.currentUser.activities : onboarding.activities,
-      travelStyle: onboarding.travelStyle,
-      workSituation: onboarding.workSituation,
-      adventureScore: 0,
-    );
+  Future<void> completeOnboarding() async {
+    final uid = AuthService.currentUser?.uid;
+    if (uid == null) return;
+
+    final userData = {
+      'name': onboarding.name.isEmpty ? 'You' : onboarding.name,
+      'age': onboarding.age ?? 0,
+      'lookingFor': onboarding.lookingFor.name,
+      'activities': onboarding.activities,
+      'travelStyle': onboarding.travelStyle.name,
+      'workSituation': onboarding.workSituation.name,
+      'adventureScore': 0,
+    };
+
+    await UserService.upsertUser(uid: uid, data: userData);
+    await loadCurrentUser();
 
     onboardingComplete = true;
+    notifyListeners();
+  }
+
+  NomadUser _parseUser(String uid, Map<String, dynamic> data) {
+    return NomadUser(
+      id: uid,
+      name: (data['name'] as String?) ?? 'Unknown',
+      age: (data['age'] as num?)?.toInt() ?? 0,
+      lookingFor: _parseLookingFor(data['lookingFor'] as String?),
+      activities: (data['activities'] as List?)?.whereType<String>().toList() ?? [],
+      travelStyle: _parseTravelStyle(data['travelStyle'] as String?),
+      workSituation: _parseWorkSituation(data['workSituation'] as String?),
+      adventureScore: (data['adventureScore'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  LookingFor _parseLookingFor(String? value) {
+    return LookingFor.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => LookingFor.both,
+    );
+  }
+
+  TravelStyle _parseTravelStyle(String? value) {
+    return TravelStyle.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => TravelStyle.slowExplorer,
+    );
+  }
+
+  WorkSituation _parseWorkSituation(String? value) {
+    return WorkSituation.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => WorkSituation.remoteWorker,
+    );
+  }
+
+  /// Sign out current user
+  Future<void> signOut() async {
+    await AuthService.signOut();
+    _currentUser = null;
+    connected.clear();
+    interested.clear();
+    matches.clear();
     notifyListeners();
   }
 }

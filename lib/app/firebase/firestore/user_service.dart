@@ -15,4 +15,13 @@ class UserService {
           SetOptions(merge: true),
         );
   }
+
+  static Future<Map<String, dynamic>?> getUser(String uid) async {
+    final doc = await FirebaseRefs.users().doc(uid).get();
+    return doc.data();
+  }
+
+  static Stream<Map<String, dynamic>?> watchUser(String uid) {
+    return FirebaseRefs.users().doc(uid).snapshots().map((doc) => doc.data());
+  }
 }

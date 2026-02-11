@@ -1,0 +1,94 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      // Anyone authenticated can read user profiles
+      allow read: if isSignedIn();
+      
+      // Users can only write their own profile
+      allow write: if isOwner(userId);
+      
+      // Sub-collection for liked stories (private)
+      match /likedStories/{storyId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+    
+    // Locations collection
+    match /locations/{locationId} {
+      // Anyone authenticated can read locations
+      allow read: if isSignedIn();
+      
+      // Users can only update their own location
+      allow create, update: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+    
+    // Stories collection
+    match /stories/{storyId} {
+      // Anyone authenticated can read stories
+      allow read: if isSignedIn();
+      
+      // Users can only create their own stories
+      allow create: if isSignedIn() && request.resource.data.authorId == request.auth.uid;
+      
+      // Users can only update/delete their own stories
+      allow update, delete: if isSignedIn() && resource.data.authorId == request.auth.uid;
+    }
+    
+    // Matches collection
+    match /matches/{matchId} {
+      // Users can read matches they're part of
+      allow read: if isSignedIn() && 
+        (resource.data.user1Id == request.auth.uid || resource.data.user2Id == request.auth.uid);
+      
+      // Users can create matches where they're one of the participants
+      allow create: if isSignedIn() && 
+        (request.resource.data.user1Id == request.auth.uid || request.resource.data.user2Id == request.auth.uid);
+      
+      // No updates or deletes to matches
+      allow update, delete: if false;
+    }
+    
+    // Conversations collection
+    match /conversations/{conversationId} {
+      // Users can read conversations they're part of
+      allow read: if isSignedIn() && request.auth.uid in resource.data.memberUids;
+      
+      // Users can create conversations where they're a member
+      allow create: if isSignedIn() && request.auth.uid in request.resource.data.memberUids;
+      
+      // Users can update conversations they're part of (for last read timestamp, etc.)
+      allow update: if isSignedIn() && request.auth.uid in resource.data.memberUids;
+      
+      // No deletes
+      allow delete: if false;
+      
+      // Messages sub-collection
+      match /messages/{messageId} {
+        // Users can read messages in conversations they're part of
+        allow read: if isSignedIn() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.memberUids;
+        
+        // Users can create messages if they're the sender and part of the conversation
+        allow create: if isSignedIn() && 
+          request.resource.data.fromUserId == request.auth.uid &&
+          request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.memberUids;
+        
+        // No updates or deletes to messages
+        allow update, delete: if false;
+      }
+    }
+  }
+}

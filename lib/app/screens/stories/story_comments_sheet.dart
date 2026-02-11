@@ -145,11 +145,14 @@ class _StoryCommentsSheetState extends State<StoryCommentsSheet> {
   }
 
   void _send(StoriesState stories, SessionState session) {
+    final user = session.currentUser;
+    if (user == null) return;
+
     final text = _controller.text;
     _controller.clear();
     stories.addComment(
       storyId: widget.story.id,
-      author: session.currentUser,
+      author: user,
       text: text,
     );
   }

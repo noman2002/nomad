@@ -1,0 +1,59 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // Profile videos: /profiles/{userId}/video.mp4
+    match /profiles/{userId}/{fileName} {
+      // Anyone authenticated can read profile videos
+      allow read: if isSignedIn();
+      
+      // Users can only upload their own profile video
+      allow write: if isOwner(userId) && 
+        request.resource.size < 100 * 1024 * 1024 && // Max 100MB
+        request.resource.contentType.matches('video/.*');
+    }
+    
+    // Story videos: /stories/{storyId}/{fileName}
+    match /stories/{storyId}/{fileName} {
+      // Anyone authenticated can read story videos
+      allow read: if isSignedIn();
+      
+      // Users can upload stories (ownership verified in Firestore rules)
+      allow write: if isSignedIn() && 
+        request.resource.size < 100 * 1024 * 1024 && // Max 100MB
+        request.resource.contentType.matches('video/.*');
+    }
+    
+    // Story thumbnails: /stories/{storyId}/thumbnail.jpg
+    match /stories/{storyId}/thumbnail.{ext} {
+      // Anyone authenticated can read thumbnails
+      allow read: if isSignedIn();
+      
+      // Users can upload thumbnails
+      allow write: if isSignedIn() && 
+        request.resource.size < 5 * 1024 * 1024 && // Max 5MB
+        request.resource.contentType.matches('image/.*');
+    }
+    
+    // Van photos: /vans/{userId}/{fileName}
+    match /vans/{userId}/{fileName} {
+      // Anyone authenticated can read van photos
+      allow read: if isSignedIn();
+      
+      // Users can only upload their own van photos
+      allow write: if isOwner(userId) && 
+        request.resource.size < 10 * 1024 * 1024 && // Max 10MB per photo
+        request.resource.contentType.matches('image/.*');
+    }
+  }
+}
