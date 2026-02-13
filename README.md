@@ -99,34 +99,24 @@ await DataMigration.uploadMockData();
 await DataMigration.clearMockData();
 ```
 
-## 📋 Implementation Status
+## 📋 Current Status
 
-### ✅ Phase 0-6 (Complete)
-- App setup and theming
-- Onboarding flow
-- Living map with real-time locations
-- Full profile screens
-- Stories feed
-- Quest system and gamification
-- Chat functionality
+**Done**
+- App setup, theming, bottom tabs (Map, Stories, Quests, Chats, Profile)
+- Onboarding (welcome, video intro, basic info, vibe, invite code, location)
+- Living map with markers, bottom sheet (video + connect/interested), full profile
+- Full profile: video header, about, van details, photos, route mini-map, matching
+- Stories feed (vertical video, like/comment, see on map, upload placeholder)
+- Quests & adventure score (levels, quest board, points, leaderboard)
+- Chat (conversation list, 1:1 messages, Coffee Ping, share location/media placeholders)
+- Firebase: Auth (email/password), Firestore schema & rules, Storage rules, real-time streams, mock data migration; map uses Firestore
 
-### ⚠️ Phase 7 (In Progress)
-- ✅ Firebase Auth (email/password)
-- ✅ Firestore schema & security rules
-- ✅ Real-time data streams
-- ✅ Mock data migration
-- ❌ Cloud Functions (not started)
-- ❌ FCM push notifications (not started)
-- ❌ Video upload/download (not started)
-
-### ❌ Phase 8-9 (Not Started)
-- RevenueCat integration
-- Paywall screens
-- Polish & accessibility
-- Performance optimization
-- App icons & splash screens
-
-See [TASKS.md](TASKS.md) for detailed task breakdown.
+**In progress / TODO**
+- Cloud Functions (matching, notifications)
+- FCM push notifications
+- Video upload/download (Storage rules ready)
+- Filter control on map (Dating/Friends/Both)
+- RevenueCat, paywall, polish, app icons & splash
 
 ## 🛠️ Tech Stack
 
@@ -167,17 +157,6 @@ This is a hackathon/prototype project. See the requirements document for the ful
 ## 📄 License
 
 Private project - All rights reserved
-
-## 🎯 Next Steps
-
-1. **Deploy Firebase rules** to production Firebase project
-2. **Implement video upload** to Firebase Storage
-3. **Add Cloud Functions** for matching logic
-4. **Set up FCM** for push notifications
-5. **Integrate RevenueCat** for monetization
-6. **Polish UI/UX** and add proper error handling
-7. **Implement phone authentication** for production
-8. **Add invite code validation**
 
 ---
 
