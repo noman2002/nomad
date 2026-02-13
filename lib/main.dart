@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'app/app_theme.dart';
 import 'app/firebase/auth/auth_gate.dart';
 import 'app/firebase/firebase_bootstrap.dart';
+import 'app/revenuecat/revenuecat_bootstrap.dart';
 import 'app/screens/home_shell.dart';
 import 'app/state/chat_state.dart';
 import 'app/state/nav_state.dart';
@@ -20,6 +21,7 @@ Future<void> main() async {
   if (!isTest) {
     await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
     await FirebaseBootstrap.configure();
+    await initializeRevenueCat();
   }
 
   runApp(MyApp(enableAuthGate: !isTest));

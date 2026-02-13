@@ -9,6 +9,7 @@ import '../../models/geo.dart';
 import '../../models/nomad_location.dart';
 import '../../models/nomad_profile.dart';
 import '../../models/nomad_user.dart';
+import '../../revenuecat/revenuecat_paywall_sheet.dart';
 import '../../state/session_state.dart';
 import '../../util/geo_distance.dart';
 import '../map/nomad_bottom_sheet.dart';
@@ -31,10 +32,39 @@ class _MapTabState extends State<MapTab> {
   // Cache for user profiles
   final Map<String, NomadProfile> _profileCache = {};
 
+  Future<void> _showRangeUpgradePrompt() async {
+    if (!mounted) return;
+    final session = context.read<SessionState>();
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Premium Range'),
+        content: const Text(
+          'Free discovery radius is up to 50 km. Upgrade to Premium to unlock up to 500 km.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Later')),
+          FilledButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              final upgraded = await showRevenueCatPaywall(this.context);
+              if (upgraded) {
+                await session.refreshSubscriptionStatus();
+              }
+            },
+            child: const Text('View plans'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final session = context.watch<SessionState>();
     final currentUser = session.currentUser;
+    final maxRadiusKm = session.maxDiscoveryRadiusKm;
+    final effectiveRadiusKm = _radiusKm > maxRadiusKm ? maxRadiusKm : _radiusKm;
 
     // Default position (Los Angeles)
     final myPosition = const LatLng(34.0522, -118.2437);
@@ -80,11 +110,11 @@ class _MapTabState extends State<MapTab> {
           }
 
           final allLocations = snapshot.data!;
-          
+
           // Load profiles for visible users
           _loadProfiles(allLocations);
 
-          final locations = _filteredLocations(allLocations, myPosition);
+          final locations = _filteredLocations(allLocations, myPosition, effectiveRadiusKm);
           final markers = _buildMarkers(context, locations, myPosition);
 
           return Stack(
@@ -114,10 +144,18 @@ class _MapTabState extends State<MapTab> {
                 top: 12,
                 child: _FilterBar(
                   filter: _filter,
-                  radiusKm: _radiusKm,
+                  radiusKm: effectiveRadiusKm,
+                  maxRadiusKm: maxRadiusKm,
                   clusterEnabled: _clusterEnabled,
                   onFilterChanged: (v) => setState(() => _filter = v),
-                  onRadiusChanged: (v) => setState(() => _radiusKm = v),
+                  onRadiusChanged: (v) {
+                    if (v > maxRadiusKm) {
+                      setState(() => _radiusKm = maxRadiusKm);
+                      _showRangeUpgradePrompt();
+                      return;
+                    }
+                    setState(() => _radiusKm = v);
+                  },
                   onToggleCluster: () => setState(() => _clusterEnabled = !_clusterEnabled),
                 ),
               ),
@@ -143,7 +181,10 @@ class _MapTabState extends State<MapTab> {
   }
 
   Future<void> _loadProfiles(List<NomadLocation> locations) async {
-    final userIds = locations.map((l) => l.userId).where((id) => !_profileCache.containsKey(id)).toList();
+    final userIds = locations
+        .map((l) => l.userId)
+        .where((id) => !_profileCache.containsKey(id))
+        .toList();
     if (userIds.isEmpty) return;
 
     final profiles = await ProfileService.getProfiles(userIds);
@@ -158,14 +199,15 @@ class _MapTabState extends State<MapTab> {
       width: 40,
       height: 40,
       alignment: Alignment.center,
-      child: _PulsingDot(
-        color: AppColors.primary,
-        size: 14,
-      ),
+      child: _PulsingDot(color: AppColors.primary, size: 14),
     );
   }
 
-  List<NomadLocation> _filteredLocations(List<NomadLocation> allLocations, LatLng center) {
+  List<NomadLocation> _filteredLocations(
+    List<NomadLocation> allLocations,
+    LatLng center,
+    double radiusKm,
+  ) {
     return allLocations.where((loc) {
       final profile = _profileCache[loc.userId];
       if (profile == null) return false;
@@ -173,13 +215,17 @@ class _MapTabState extends State<MapTab> {
       if (_filter != null && profile.user.lookingFor != _filter) return false;
 
       final km = GeoDistance.kmBetween(center, loc.position);
-      if (km > _radiusKm) return false;
+      if (km > radiusKm) return false;
 
       return true;
     }).toList();
   }
 
-  List<Marker> _buildMarkers(BuildContext context, List<NomadLocation> locations, LatLng myPosition) {
+  List<Marker> _buildMarkers(
+    BuildContext context,
+    List<NomadLocation> locations,
+    LatLng myPosition,
+  ) {
     final markers = <Marker>[_buildMyMarker(myPosition)];
 
     final shouldCluster = _clusterEnabled && _zoom < 13.2;
@@ -192,8 +238,8 @@ class _MapTabState extends State<MapTab> {
     final decimals = _zoom < 11
         ? 1
         : _zoom < 12.2
-            ? 2
-            : 3;
+        ? 2
+        : 3;
 
     for (final loc in locations) {
       final key = _bucketKey(loc.position, decimals);
@@ -260,50 +306,50 @@ class _MapTabState extends State<MapTab> {
     return LatLng(lat / locations.length, lng / locations.length);
   }
 
-  List<Marker> _buildNomadMarkers(
-    BuildContext context,
-    List<NomadLocation> locations,
-  ) {
-    return locations.map((loc) {
-      final profile = _profileCache[loc.userId];
-      if (profile == null) return null;
+  List<Marker> _buildNomadMarkers(BuildContext context, List<NomadLocation> locations) {
+    return locations
+        .map((loc) {
+          final profile = _profileCache[loc.userId];
+          if (profile == null) return null;
 
-      final user = profile.user;
-      final color = switch (user.lookingFor) {
-        LookingFor.dating => Colors.redAccent,
-        LookingFor.friends => Colors.greenAccent,
-        LookingFor.both => Colors.amberAccent,
-      };
+          final user = profile.user;
+          final color = switch (user.lookingFor) {
+            LookingFor.dating => Colors.redAccent,
+            LookingFor.friends => Colors.greenAccent,
+            LookingFor.both => Colors.amberAccent,
+          };
 
-      return Marker(
-        point: loc.position,
-        width: 44,
-        height: 44,
-        alignment: Alignment.center,
-        child: GestureDetector(
-          onTap: () {
-            showModalBottomSheet<void>(
-              context: context,
-              backgroundColor: Theme.of(context).colorScheme.surface,
-              isScrollControlled: true,
-              shape: const RoundedRectangleBorder(
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          return Marker(
+            point: loc.position,
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
+            child: GestureDetector(
+              onTap: () {
+                showModalBottomSheet<void>(
+                  context: context,
+                  backgroundColor: Theme.of(context).colorScheme.surface,
+                  isScrollControlled: true,
+                  shape: const RoundedRectangleBorder(
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  builder: (_) => NomadBottomSheet(nomad: user),
+                );
+              },
+              child: Container(
+                width: 16,
+                height: 16,
+                decoration: BoxDecoration(
+                  color: color,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.surface, width: 2),
+                ),
               ),
-              builder: (_) => NomadBottomSheet(nomad: user),
-            );
-          },
-          child: Container(
-            width: 16,
-            height: 16,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-              border: Border.all(color: AppColors.surface, width: 2),
             ),
-          ),
-        ),
-      );
-    }).whereType<Marker>().toList();
+          );
+        })
+        .whereType<Marker>()
+        .toList();
   }
 }
 
@@ -311,6 +357,7 @@ class _FilterBar extends StatelessWidget {
   const _FilterBar({
     required this.filter,
     required this.radiusKm,
+    required this.maxRadiusKm,
     required this.clusterEnabled,
     required this.onFilterChanged,
     required this.onRadiusChanged,
@@ -319,6 +366,7 @@ class _FilterBar extends StatelessWidget {
 
   final LookingFor? filter;
   final double radiusKm;
+  final double maxRadiusKm;
   final bool clusterEnabled;
   final ValueChanged<LookingFor?> onFilterChanged;
   final ValueChanged<double> onRadiusChanged;
@@ -342,11 +390,7 @@ class _FilterBar extends StatelessWidget {
       ),
       child: Row(
         children: [
-          _FilterChip(
-            label: 'All',
-            selected: filter == null,
-            onTap: () => onFilterChanged(null),
-          ),
+          _FilterChip(label: 'All', selected: filter == null, onTap: () => onFilterChanged(null)),
           const SizedBox(width: 8),
           _FilterChip(
             label: 'Dating',
@@ -366,21 +410,34 @@ class _FilterBar extends StatelessWidget {
             onTap: () => onFilterChanged(LookingFor.both),
           ),
           const Spacer(),
-          DropdownButton<double>(
-            value: radiusKm,
-            underline: const SizedBox.shrink(),
-            dropdownColor: theme.colorScheme.surface,
-            items: const [
-              DropdownMenuItem(value: 10, child: Text('10 km')),
-              DropdownMenuItem(value: 25, child: Text('25 km')),
-              DropdownMenuItem(value: 50, child: Text('50 km')),
-              DropdownMenuItem(value: 100, child: Text('100 km')),
-            ],
-            onChanged: (v) {
-              if (v != null) onRadiusChanged(v);
-            },
+          SizedBox(
+            width: 78,
+            child: DropdownButton<double>(
+              isExpanded: true,
+              isDense: true,
+              value: radiusKm,
+              underline: const SizedBox.shrink(),
+              dropdownColor: theme.colorScheme.surface,
+              items: <double>[10, 25, 50, 100, 250, 500].map((km) {
+                return DropdownMenuItem(value: km, child: Text('${km.toInt()}k'));
+              }).toList(),
+              selectedItemBuilder: (context) {
+                return <double>[
+                  10,
+                  25,
+                  50,
+                  100,
+                  250,
+                  500,
+                ].map((km) => Text('${km.toInt()}k')).toList();
+              },
+              onChanged: (v) {
+                if (v != null) onRadiusChanged(v);
+              },
+            ),
           ),
           IconButton(
+            visualDensity: VisualDensity.compact,
             onPressed: onToggleCluster,
             icon: Icon(clusterEnabled ? Icons.bubble_chart : Icons.scatter_plot),
             tooltip: clusterEnabled ? 'Clustering on' : 'Clustering off',
@@ -392,11 +449,7 @@ class _FilterBar extends StatelessWidget {
 }
 
 class _FilterChip extends StatelessWidget {
-  const _FilterChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
+  const _FilterChip({required this.label, required this.selected, required this.onTap});
 
   final String label;
   final bool selected;
@@ -406,26 +459,26 @@ class _FilterChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-          decoration: BoxDecoration(
-            color: selected
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        decoration: BoxDecoration(
+          color: selected
               ? Theme.of(context).colorScheme.primary
               : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.6),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(
-              color: selected
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected
                 ? Theme.of(context).colorScheme.primary
                 : Theme.of(context).colorScheme.outline,
-            ),
           ),
+        ),
         child: Text(
           label,
           style: TextStyle(
             fontWeight: FontWeight.w800,
             color: selected
-              ? Theme.of(context).colorScheme.onPrimary
-              : Theme.of(context).colorScheme.onSurface,
+                ? Theme.of(context).colorScheme.onPrimary
+                : Theme.of(context).colorScheme.onSurface,
             fontSize: 12,
           ),
         ),
@@ -444,17 +497,14 @@ class _PulsingDot extends StatefulWidget {
   State<_PulsingDot> createState() => _PulsingDotState();
 }
 
-class _PulsingDotState extends State<_PulsingDot>
-    with SingleTickerProviderStateMixin {
+class _PulsingDotState extends State<_PulsingDot> with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat();
+    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200))
+      ..repeat();
   }
 
   @override

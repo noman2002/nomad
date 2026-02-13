@@ -4,6 +4,7 @@ import 'package:video_player/video_player.dart';
 
 import '../../mock/mock_profiles.dart';
 import '../../models/nomad_user.dart';
+import '../../revenuecat/revenuecat_paywall_sheet.dart';
 import '../../screens/profile/full_profile_screen.dart';
 import '../../state/session_state.dart';
 
@@ -18,6 +19,34 @@ class NomadBottomSheet extends StatefulWidget {
 
 class _NomadBottomSheetState extends State<NomadBottomSheet> {
   VideoPlayerController? _controller;
+
+  Future<void> _showUpgradePrompt(String message) async {
+    if (!mounted) return;
+    final session = context.read<SessionState>();
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Upgrade to Premium'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Later'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.of(context).pop();
+              final upgraded = await showRevenueCatPaywall(this.context);
+              if (upgraded) {
+                await session.refreshSubscriptionStatus();
+              }
+            },
+            child: const Text('View plans'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   void initState() {
@@ -93,7 +122,13 @@ class _NomadBottomSheetState extends State<NomadBottomSheet> {
             children: [
               Expanded(
                 child: FilledButton.tonal(
-                  onPressed: () => session.toggleConnect(widget.nomad.id),
+                  onPressed: () async {
+                    final didToggle = session.toggleConnect(widget.nomad.id);
+                    if (didToggle || session.hasPremiumAccess) return;
+                    await _showUpgradePrompt(
+                      'Free plan includes ${SessionState.freeConnectsDailyLimit} connects per day. Upgrade for unlimited connects.',
+                    );
+                  },
                   child: Text(
                     session.connected.contains(widget.nomad.id)
                         ? 'Connected'
@@ -119,6 +154,13 @@ class _NomadBottomSheetState extends State<NomadBottomSheet> {
             width: double.infinity,
             child: FilledButton.tonal(
               onPressed: () async {
+                if (!session.consumeProfileView()) {
+                  await _showUpgradePrompt(
+                    'Free plan includes ${SessionState.freeProfileViewsDailyLimit} full profile views per day. Upgrade for unlimited views.',
+                  );
+                  return;
+                }
+
                 final profile = MockProfiles.profilesByUserId[widget.nomad.id];
                 if (profile == null) return;
 
@@ -130,7 +172,12 @@ class _NomadBottomSheetState extends State<NomadBottomSheet> {
 
                 if (!context.mounted) return;
                 if (result == 'connect') {
-                  session.toggleConnect(widget.nomad.id);
+                  final didToggle = session.toggleConnect(widget.nomad.id);
+                  if (!didToggle && !session.hasPremiumAccess) {
+                    await _showUpgradePrompt(
+                      'Free plan includes ${SessionState.freeConnectsDailyLimit} connects per day. Upgrade for unlimited connects.',
+                    );
+                  }
                 } else if (result == 'interested') {
                   session.toggleInterested(widget.nomad.id);
                   if (session.matches.contains(widget.nomad.id)) {
@@ -145,6 +192,15 @@ class _NomadBottomSheetState extends State<NomadBottomSheet> {
               child: const Text('View full profile'),
             ),
           ),
+          if (!session.hasPremiumAccess) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Free today: ${session.profileViewsRemaining} profile views left • ${session.connectsRemaining} connects left',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ],
       ),
     );

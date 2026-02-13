@@ -7,6 +7,7 @@ import '../../state/session_state.dart';
 import '../firebase_refs.dart';
 import '../firestore/data_migration.dart';
 import '../firestore/user_service.dart';
+import '../../revenuecat/revenuecat_bootstrap.dart';
 import 'auth_service.dart';
 
 class AuthGate extends StatefulWidget {
@@ -38,6 +39,8 @@ class _AuthGateState extends State<AuthGate> {
 
         if (user != null) {
           _initializeUser();
+        } else {
+          clearRevenueCatUser();
         }
       }
     });
@@ -99,6 +102,7 @@ class _AuthGateState extends State<AuthGate> {
           if (mounted) {
             await context.read<SessionState>().loadCurrentUser();
           }
+
         } catch (e) {
           retries--;
           if (retries > 0) {
@@ -174,7 +178,7 @@ class _AuthGateState extends State<AuthGate> {
                 const SizedBox(height: 12),
                 OutlinedButton(
                   onPressed: () async {
-                    await AuthService.signOut();
+                    await context.read<SessionState>().signOut();
                     setState(() {
                       _isAuthenticated = false;
                       _error = null;
