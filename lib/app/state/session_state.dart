@@ -69,6 +69,7 @@ class SessionState extends ChangeNotifier {
     final uid = AuthService.currentUser?.uid;
     if (uid == null) {
       _currentUser = null;
+      onboardingComplete = false;
       notifyListeners();
       return;
     }
@@ -80,6 +81,10 @@ class SessionState extends ChangeNotifier {
       final userDoc = await UserService.getUser(uid);
       if (userDoc != null) {
         _currentUser = _parseUser(uid, userDoc);
+        // Treat existing authenticated users as onboarded so they land on home tabs.
+        onboardingComplete = true;
+      } else {
+        onboardingComplete = false;
       }
       await syncRevenueCatUser(uid);
       _hasPremiumAccess = await hasActiveEntitlement();
@@ -131,8 +136,7 @@ class SessionState extends ChangeNotifier {
     connected.add(userId);
     if (!_hasPremiumAccess) {
       _connectsToday++;
-    } else {
-    }
+    } else {}
     notifyListeners();
     return true;
   }
@@ -206,6 +210,7 @@ class SessionState extends ChangeNotifier {
     await clearRevenueCatUser();
     await AuthService.signOut();
     _currentUser = null;
+    onboardingComplete = false;
     _hasPremiumAccess = false;
     _profilesViewedToday = 0;
     _connectsToday = 0;
